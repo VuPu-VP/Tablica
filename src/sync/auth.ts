@@ -17,6 +17,13 @@ const ls = {
   del: (k: string) => { try { localStorage.removeItem(k); } catch { /* brak dostępu */ } },
 };
 
+/**
+ * Adres powrotu po logowaniu Google – zawsze główny adres aplikacji (np. https://vupu-vp.github.io/Tablica/),
+ * niezależnie od tego, czy w pasku jest /index.html albo inna wielkość liter. Musi być identyczny
+ * z wpisem w Google Cloud → Authorized redirect URIs.
+ */
+export const redirectUri = () => new URL(import.meta.env.BASE_URL, location.origin).href;
+
 export const getClientId = (): string => ls.get(CLIENT_KEY) || (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) || '';
 export const setClientId = (id: string) => (id ? ls.set(CLIENT_KEY, id.trim()) : ls.del(CLIENT_KEY));
 export const isConnected = () => ls.get(CONNECTED_KEY) === '1';
@@ -89,7 +96,7 @@ function redirectToGoogle(clientId: string): Promise<void> {
   ls.set(STATE_KEY, state);
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: location.origin + location.pathname,
+    redirect_uri: redirectUri(),
     response_type: 'token',
     scope: SCOPE,
     include_granted_scopes: 'true',

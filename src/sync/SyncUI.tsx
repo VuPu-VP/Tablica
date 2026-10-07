@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Dialog } from '../ui/Dialog';
 import { Icon } from '../ui/Icon';
 import { toast } from '../ui/toast';
-import { connect, disconnect, getClientId, isConnected, setClientId } from './auth';
+import { connect, disconnect, getClientId, isConnected, redirectUri, setClientId } from './auth';
 import { syncNow, syncStatus, type SyncStatus } from './runner';
 
 const time = (t?: number) => (t ? new Date(t).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : '—');
@@ -115,7 +115,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               <li><b>Credentials → Create credentials → OAuth client ID</b>, typ <b>Web application</b>.</li>
               <li>W „Authorized JavaScript origins” dodaj: <code>{location.origin}</code>
                 {location.hostname === 'localhost' ? ' (i później adres z GitHub Pages)' : ''}.
-                W „Authorized redirect URIs” dodaj: <code>{location.origin + location.pathname}</code> (logowanie na iPhonie).</li>
+                W „Authorized redirect URIs” dodaj: <code>{redirectUri()}</code> (logowanie na iPhonie).</li>
               <li>Skopiuj <b>Client ID</b> (kończy się na <code>.apps.googleusercontent.com</code>) i wklej powyżej.</li>
             </ol>
             <p className="muted small">Konta uczelniane bywają zablokowane dla „niezweryfikowanych aplikacji” przez administratora – wtedy użyj prywatnego konta Gmail.</p>
