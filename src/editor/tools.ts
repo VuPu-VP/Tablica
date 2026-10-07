@@ -27,7 +27,8 @@ export const ERASER_SIZES = [1.5, 3, 6];
 
 const KEY = 'tablica.tools';
 
-const isTouchOnly = () =>
+/** Urządzenie tylko dotykowe (telefon) – bez myszy i bez rysika. */
+export const isTouchPrimary = () =>
   typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
 
 const defaults = (): ToolSettings => ({
@@ -38,7 +39,8 @@ const defaults = (): ToolSettings => ({
   hlWidth: HL_WIDTHS[1],
   eraserMode: 'partial',
   eraserSize: ERASER_SIZES[1],
-  fingerDraw: isTouchOnly(),
+  // palec domyślnie przewija (także na telefonie); rysowanie palcem włącza się przyciskiem z dłonią
+  fingerDraw: false,
   ruler: false,
   pressure: true,
 });
@@ -46,7 +48,13 @@ const defaults = (): ToolSettings => ({
 function load(): ToolSettings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...defaults(), ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      // jednorazowo: starsze wersje włączały na telefonie rysowanie palcem (przewijanie tylko dwoma palcami)
+      if (!localStorage.getItem(KEY + '.v2')) { saved.fingerDraw = false; localStorage.setItem(KEY + '.v2', '1'); }
+      return { ...defaults(), ...saved };
+    }
+    localStorage.setItem(KEY + '.v2', '1');
   } catch { /* brak dostępu do localStorage – zostają domyślne */ }
   return defaults();
 }

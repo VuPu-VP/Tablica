@@ -9,7 +9,7 @@ import { touchState } from '../editor/gestures';
 import { PEN_COLORS, type ToolSettings } from '../editor/tools';
 import { clipboard } from '../ink/clipboard';
 import { eraseFromStroke } from '../ink/eraser';
-import { roundPoint, strokeHit } from '../ink/geometry';
+import { bboxOf, roundPoint, strokeHit } from '../ink/geometry';
 import { history } from '../ink/history';
 import { drawLiveStroke, drawStrokes } from '../ink/render';
 import { objectsBBox, selectInPolygon, transformObject, type TextHeights } from '../ink/selection';
@@ -59,6 +59,8 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
   const inkRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
   const gesture = useRef<Gesture | null>(null);
+  /** stuknięcie palcem z narzędziem lasso (w trybie przewijania) */
+  const tap = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
@@ -257,7 +259,11 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const s = settingsRef.current;
-    if (e.pointerType === 'touch' && (!s.fingerDraw || touchState.count > 1)) return; // palec → przewijanie (Editor)
+    if (e.pointerType === 'touch' && (!s.fingerDraw || touchState.count > 1)) {
+      // palec przewija (Editor), ale stuknięcie z narzędziem lasso zaznacza obiekt pod palcem
+      if (s.tool === 'lasso' && touchState.count <= 1) tap.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (gesture.current) return; // druga ręka/dłoń w trakcie pisania – ignorujemy
     const native = e.nativeEvent;
@@ -353,6 +359,12 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
   };
 
   const onPointerUp = async (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const t = tap.current;
+    if (t && t.pointerId === e.pointerId) {
+      tap.current = null;
+      if (Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) selectAt(...toPage(e));
+      return;
+    }
     const g = gesture.current;
     if (!g || g.pointerId !== e.pointerId) return;
     clearTimeout(holdTimer.current);
@@ -365,6 +377,9 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
       return;
     }
     if (g.kind === 'lasso') {
+      // krótkie stuknięcie zamiast obrysu → zaznacz obiekt pod kursorem/rysikiem
+      const b = bboxOf(g.poly.map(([x, y]) => [x, y, 0] as Point));
+      if (Math.max(b.maxX - b.minX, b.maxY - b.minY) < 3) { selectAt(g.poly[0][0], g.poly[0][1]); return; }
       const ids = selectInPolygon(objects, g.poly, measureTextHeights());
       setSel(ids.length ? ids : null);
       return;
@@ -386,7 +401,19 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
   };
 
   const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (tap.current?.pointerId === e.pointerId) tap.current = null; // palec zaczął przewijać – to nie było stuknięcie
     if (gesture.current?.pointerId === e.pointerId) cancelGesture();
+  };
+
+  /** Zaznacza najwyższy obiekt w punkcie (x, y) mm: zdjęcie, wykres, schemat, blok tekstu albo kreskę. */
+  const selectAt = (x: number, y: number) => {
+    const heights = measureTextHeights();
+    const hit = [...objects].reverse().find((o) => {
+      if (o.type === 'stroke') return strokeHit(o, x, y, 1.5);
+      if (o.type === 'text') return x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + (heights.get(o.id) ?? 5);
+      return x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h;
+    });
+    setSel(hit ? [hit.id] : null);
   };
 
   // ---------- zaznaczenie lassem ----------

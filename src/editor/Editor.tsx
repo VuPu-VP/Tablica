@@ -14,7 +14,7 @@ import { Icon } from '../ui/Icon';
 import { toast } from '../ui/toast';
 import { touchState } from './gestures';
 import { Toolbar } from './Toolbar';
-import { useToolSettings, type Tool } from './tools';
+import { isTouchPrimary, useToolSettings, type Tool } from './tools';
 
 interface Props {
   notebookId: ID;
@@ -141,11 +141,24 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
     return () => el.removeEventListener('wheel', onWheel);
   });
 
-  // ---------- Dotyk: przewijanie jednym palcem, szczypanie dwoma (faza capture = przed stroną) ----------
+  // ---------- Dotyk ----------
+  // Telefon (bez myszy/rysika): przewijanie NATYWNE przeglądarki (płynne, z rozpędem), my obsługujemy tylko szczypanie.
+  // Laptop z rysikiem: przewijanie palcem robimy sami, bo przy natywnym przewijaniu rysik Windows też by przewijał stronę.
+  const nativeScroll = !settings.fingerDraw && isTouchPrimary();
   const touches = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ dist: number; zoom: number; mx: number; my: number } | null>(null);
   const velocity = useRef({ vx: 0, vy: 0, t: 0 });
   const inertia = useRef(0);
+
+  // Natywne przewijanie pozwala tylko na przesuwanie (pan-x pan-y); dwa palce = nasze szczypanie,
+  // więc wtedy blokujemy przeglądarce przewijanie (inaczej przerwie gest – pointercancel).
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || !nativeScroll) return;
+    const onTouchMove = (e: TouchEvent) => { if (e.touches.length >= 2) e.preventDefault(); };
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onTouchMove);
+  }, [nativeScroll]);
 
   const onTouchDown = (e: React.PointerEvent) => {
     if (e.pointerType !== 'touch') return;
@@ -157,8 +170,9 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
       const [a, b] = [...touches.current.values()];
       pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
       e.stopPropagation();
-    } else if (!settings.fingerDraw && !diagramEditing.getPlacing()) {
-      e.stopPropagation(); // przy wstawianiu wykresu stuknięcie palcem ma trafić w kartkę
+    } else if (!settings.fingerDraw && !nativeScroll && !diagramEditing.getPlacing() && settings.tool !== 'lasso') {
+      // przewijanie ręczne: strona nie dostaje dotyku (stuknięcie lassem i wstawianie – tak, żeby dało się zaznaczać)
+      e.stopPropagation();
     }
     velocity.current = { vx: 0, vy: 0, t: performance.now() };
   };
@@ -178,7 +192,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
       pinch.current.mx = mx; pinch.current.my = my;
       zoomAt(pinch.current.zoom * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.dist), mx, my);
       e.stopPropagation();
-    } else if (!settings.fingerDraw) {
+    } else if (!settings.fingerDraw && !nativeScroll) {
       const dx = cur.x - prev.x, dy = cur.y - prev.y;
       el.scrollLeft -= dx;
       el.scrollTop -= dy;
@@ -194,7 +208,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
     touches.current.delete(e.pointerId);
     touchState.count = touches.current.size;
     if (touches.current.size < 2) pinch.current = null;
-    if (touches.current.size === 0 && !settings.fingerDraw) {
+    if (touches.current.size === 0 && !settings.fingerDraw && !nativeScroll) {
       // bezwładność: przewijanie wyhamowuje płynnie jak natywne
       let { vx, vy } = velocity.current;
       if (performance.now() - velocity.current.t > 80) return;
@@ -309,7 +323,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
         }}
       />
       <div
-        className="scroller"
+        className={`scroller ${nativeScroll ? 'native-scroll' : ''}`}
         ref={scroller}
         onPointerDownCapture={onTouchDown}
         onPointerMoveCapture={onTouchMove}

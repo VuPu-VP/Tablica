@@ -93,7 +93,7 @@ export function Toolbar({ settings: s, update, onPaste, onImage, onPdf, onDiagra
       ))}
       <div className="divider" />
       {s.tool === 'lasso' ? (
-        <span className="hint">Obrysuj pismo, aby je zaznaczyć · boczny przycisk rysika też działa jak lasso</span>
+        <span className="hint">Obrysuj, aby zaznaczyć – albo stuknij zdjęcie, wykres czy tekst · boczny przycisk rysika też działa jak lasso</span>
       ) : s.tool === 'text' ? (
         <TextControls />
       ) : (
