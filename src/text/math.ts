@@ -1,6 +1,8 @@
 import { InputRule, Node, type NodeViewRendererProps } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import katex from 'katex';
+import { toast } from '../ui/toast';
+import { calcInMathInput, docVars } from './calc';
 import { convertInMathInput } from './fraction';
 
 /** Renderuje LaTeX do elementu. Błędna składnia nie wywala edytora, tylko pokazuje się na czerwono. */
@@ -79,6 +81,11 @@ function mathView(display: boolean) {
         if (e.key === 'Enter' && (!display || !e.shiftKey)) { e.preventDefault(); commit(true); }
         if (e.key === 'Escape') { e.preventDefault(); done = true; show(); editor.commands.focus(); }
         if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); convertInMathInput(input); }
+        if (e.altKey && e.code === 'Equal') {
+          e.preventDefault();
+          const err = calcInMathInput(input, docVars(editor));
+          if (err) toast(err, 'error');
+        }
       });
       input.addEventListener('blur', () => commit(false));
       requestAnimationFrame(() => { input.focus(); input.select(); });

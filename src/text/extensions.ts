@@ -1,6 +1,8 @@
 import { Extension, type JSONContent } from '@tiptap/core';
 import { Placeholder } from '@tiptap/extensions';
 import StarterKit from '@tiptap/starter-kit';
+import { toast } from '../ui/toast';
+import { calculate } from './calc';
 import { convertToFraction } from './fraction';
 import { MathBlock, MathInline } from './math';
 
@@ -9,6 +11,20 @@ const FractionShortcut = Extension.create({
   name: 'fractionShortcut',
   addKeyboardShortcuts() {
     return { 'Mod-/': () => convertToFraction(this.editor) };
+  },
+});
+
+/** Alt+= – liczy działanie przed kursorem (albo zaznaczone) i dopisuje wynik. */
+const CalcShortcut = Extension.create({
+  name: 'calcShortcut',
+  addKeyboardShortcuts() {
+    return {
+      'Alt-=': () => {
+        const err = calculate(this.editor);
+        if (err) toast(err, 'error');
+        return true;
+      },
+    };
   },
 });
 
@@ -27,6 +43,7 @@ export const editorExtensions = [
   ...baseExtensions,
   Placeholder.configure({ placeholder: 'Pisz… ($x^2$ = wzór)' }),
   FractionShortcut,
+  CalcShortcut,
 ];
 
 export const emptyDoc = (): JSONContent => ({ type: 'doc', content: [{ type: 'paragraph' }] });

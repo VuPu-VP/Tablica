@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { clipboard } from '../ink/clipboard';
 import { history } from '../ink/history';
 import { activeEditor } from '../text/active';
+import { calcInMathInput, calculate, docVars } from '../text/calc';
 import { convertInMathInput, convertToFraction } from '../text/fraction';
 import { toast } from '../ui/toast';
 import { Icon, type IconName } from '../ui/Icon';
@@ -60,6 +61,13 @@ function TextControls() {
           return;
         }
         if (!convertToFraction(ed!)) toast('Zaznacz tekst z ukośnikiem, np. 1/2 albo (a+b)/(c-d)', 'error');
+      })}
+      {btn('calc', 'Oblicz: kliknij za działaniem (np. 2+3·4 =) albo je zaznacz – wynik dopisze się obok. Zmienne z wcześniejszych linijek (R = 4) też działają (Alt+=)', false, () => {
+        const el = document.activeElement;
+        const err = (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && el.classList.contains('math-input')
+          ? calcInMathInput(el, docVars(ed!))
+          : calculate(ed!);
+        if (err) toast(err, 'error');
       })}
       {btn('mathBlock', 'Wzór w osobnej linii ($$…$$)', false, () => ed!.chain().focus().insertContent({ type: 'mathBlock', attrs: { latex: '' } }).run())}
       {!ed && <span className="hint">Kliknij na kartce, aby pisać</span>}
