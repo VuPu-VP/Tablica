@@ -108,7 +108,11 @@ export async function syncOnce(db: TablicaDB, store: RemoteStore): Promise<SyncR
   // ---------- 3. pliki (zdjęcia, slajdy) ----------
   const referenced = new Set<ID>();
   (await db.pages.toArray()).forEach((p) => { if (!p.deleted && p.pdf) referenced.add(p.pdf.blobId); });
-  (await db.objects.toArray()).forEach((o) => { if (!o.deleted && o.type === 'image') referenced.add(o.blobId); });
+  (await db.objects.toArray()).forEach((o) => {
+    if (o.deleted || o.type !== 'image') return;
+    referenced.add(o.blobId);
+    if (o.orig) referenced.add(o.orig); // oryginał sprzed edycji – do „Przywróć oryginał” na innym urządzeniu
+  });
   for (const id of referenced) {
     const name = blobFile(id);
     const local = await db.blobs.get(id);

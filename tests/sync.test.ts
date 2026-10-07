@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TablicaDB } from '../src/db/db';
-import type { ImageObj, Notebook, Page, StrokeObj, Subject } from '../src/db/types';
+import { INBOX_PAGE, type ImageObj, type Notebook, type Page, type StrokeObj, type Subject } from '../src/db/types';
 import { syncOnce } from '../src/sync/engine';
 import { MemoryStore } from '../src/sync/store';
 
@@ -73,5 +73,28 @@ describe('synchronizacja dwóch urządzeń przez Drive', () => {
     await syncOnce(yoga, drive);
     const r = await syncOnce(yoga, drive);
     expect(r).toMatchObject({ uploaded: 0, downloaded: 0 });
+  });
+});
+
+describe('skrzynka zdjęć: telefon → laptop', () => {
+  it('zdjęcie z telefonu trafia na laptopa, a po wstawieniu znika ze skrzynki na obu urządzeniach', async () => {
+    const data = new Blob(['zdjecie-tablicy'], { type: 'image/jpeg' });
+    // telefon: zdjęcie do skrzynki
+    await iphone.blobs.put({ id: 'hx', hash: 'hx', mime: 'image/jpeg', data });
+    await iphone.objects.put({ ...base('inbox1'), pageId: INBOX_PAGE, type: 'image', x: 0, y: 0, w: 120, h: 90, rotation: 0, blobId: 'hx', z: t } as ImageObj);
+    await syncOnce(iphone, drive);
+    // laptop: widzi zdjęcie w skrzynce razem z plikiem
+    await syncOnce(yoga, drive);
+    const inYoga = await yoga.objects.where('pageId').equals(INBOX_PAGE).toArray();
+    expect(inYoga.map((o) => o.id)).toEqual(['inbox1']);
+    expect(await (await yoga.blobs.get('hx'))?.data.text()).toBe('zdjecie-tablicy');
+    // laptop: wstawia na stronę p1 (nowy obiekt) i usuwa ze skrzynki
+    await yoga.objects.put({ ...inYoga[0], ...base('placed1'), pageId: 'p1', x: 40, y: 60 } as ImageObj);
+    await yoga.objects.put({ ...inYoga[0], deleted: 1, dirty: 1, updatedAt: now() });
+    await syncOnce(yoga, drive);
+    await syncOnce(iphone, drive);
+    const inbox = (await iphone.objects.where('pageId').equals(INBOX_PAGE).toArray()).filter((o) => !o.deleted);
+    expect(inbox).toHaveLength(0);
+    expect((await iphone.objects.get('placed1'))?.pageId).toBe('p1');
   });
 });

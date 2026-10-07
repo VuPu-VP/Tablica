@@ -74,7 +74,15 @@ export interface ImageObj extends ObjectBase {
   h: number;
   rotation: number;
   blobId: ID;
+  /** oryginał sprzed edycji (przycinanie, filtry) – do „Przywróć oryginał” */
+  orig?: ID;
 }
+
+/**
+ * Skrzynka zdjęć z telefonu: zdjęcia czekające na wstawienie to zwykłe obiekty-obrazy
+ * na specjalnej „stronie” o tym id – dzięki temu synchronizują się jak każda inna strona.
+ */
+export const INBOX_PAGE = '__inbox__';
 
 /** Seria danych na wykresie (np. pomiary z laboratorium). */
 export interface PlotSeries {

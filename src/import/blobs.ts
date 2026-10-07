@@ -50,9 +50,14 @@ export async function compressImage(file: Blob, maxSide = 2000): Promise<{ blob:
   ctx.fillRect(0, 0, width, height);
   ctx.drawImage(bmp, 0, 0, width, height);
   bmp.close();
+  return { blob: await canvasToBlob(c), width, height };
+}
+
+/** Canvas → plik: WebP, a gdy przeglądarka nie umie go zapisać (Safari) – JPEG. */
+export async function canvasToBlob(c: HTMLCanvasElement): Promise<Blob> {
   const toBlob = (type: string, q: number) => new Promise<Blob | null>((res) => c.toBlob(res, type, q));
   let blob = await toBlob('image/webp', 0.85);
   if (!blob || blob.type !== 'image/webp') blob = await toBlob('image/jpeg', 0.85);
   if (!blob) throw new Error('Nie udało się przetworzyć obrazu');
-  return { blob, width, height };
+  return blob;
 }

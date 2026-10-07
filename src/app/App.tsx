@@ -8,6 +8,10 @@ import { SearchDialog } from '../library/SearchDialog';
 import { ExportDialog } from '../export/ExportDialog';
 import { PrintView, type PrintJob } from '../export/PrintView';
 import { SettingsDialog, SyncPill } from '../sync/SyncUI';
+import { pickFiles } from '../import/image';
+import { addToInbox, useInbox } from '../import/inbox';
+import { ImageEditorHost } from '../import/ImageEditor';
+import { InboxPanel } from '../library/InboxPanel';
 import { Sidebar } from '../library/Sidebar';
 import { Thumbnails } from '../pages/Thumbnails';
 import { Icon } from '../ui/Icon';
@@ -39,6 +43,8 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const inbox = useInbox();
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const endPrint = useCallback(() => setPrintJob(null), []);
   const menu = useMenu();
@@ -118,6 +124,13 @@ export function App() {
         {showEditor && (
           <button className="icon-btn" title="Eksport do PDF / drukuj" onClick={() => setExportOpen(true)}><Icon name="export" /></button>
         )}
+        <button className="icon-btn only-mobile" title="Zdjęcie do skrzynki – pojawi się na laptopie" onClick={async () => addToInbox(await pickFiles('image/*', { multiple: true }))}>
+          <Icon name="camera" />
+        </button>
+        <button className={`icon-btn hide-mobile badge-host ${inboxOpen ? 'active' : ''}`} title="Skrzynka zdjęć z telefonu" onClick={() => setInboxOpen((v) => !v)}>
+          <Icon name="inbox" />
+          {inbox.length > 0 && <span className="badge">{inbox.length}</span>}
+        </button>
         <SyncPill onOpenSettings={() => setSettingsOpen(true)} />
       </header>
       <div className="body">
@@ -128,6 +141,7 @@ export function App() {
             <Editor key={validNotebook.id} notebookId={validNotebook.id} jump={jump} onCurrentPage={onCurrentPage} />
           </>
         )}
+        {inboxOpen && !mobile && <InboxPanel onClose={() => setInboxOpen(false)} />}
         {!validNotebook && !mobile && (
           <div className="empty">
             <div>
@@ -152,6 +166,7 @@ export function App() {
       )}
       {printJob && <PrintView job={printJob} onDone={endPrint} />}
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      <ImageEditorHost />
       <Toasts />
     </div>
   );

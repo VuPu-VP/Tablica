@@ -364,6 +364,38 @@ details summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 4
 .place-banner .btn.ghost { background: rgb(255 255 255 / 0.2); color: inherit; }
 @media (max-width: 767px) { .place-banner { top: 8px; white-space: normal; max-width: calc(100% - 16px); } }
 
+/* ---------- Skrzynka zdjęć ---------- */
+.badge-host { position: relative; }
+.badge {
+  position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+}
+.inbox {
+  width: 300px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px;
+  background: var(--surface); border-left: 1px solid var(--border); overflow-y: auto;
+}
+.inbox header { display: flex; align-items: center; gap: 8px; }
+.inbox-list { display: flex; flex-direction: column; gap: 12px; }
+.inbox-item { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; background: var(--surface-2); }
+.inbox-item img { width: 100%; max-height: 220px; object-fit: contain; background: #fff; border-radius: 8px; cursor: copy; }
+.inbox-missing { height: 120px; display: grid; place-items: center; color: var(--text-muted); font-size: 12px; background: var(--surface); border-radius: 8px; }
+.inbox-meta { display: flex; align-items: center; gap: 4px; }
+
+/* ---------- Edycja zdjęcia ---------- */
+.dialog:has(.image-editor) { width: min(1000px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); }
+.image-editor { display: flex; flex-direction: column; gap: 8px; }
+.crop-stage { display: grid; place-items: center; background: #2a2c31; border-radius: 10px; padding: 16px; min-height: 240px; }
+.crop-box { position: relative; display: inline-block; line-height: 0; touch-action: none; }
+.crop-box img { max-width: min(860px, calc(100vw - 100px)); max-height: 56dvh; user-select: none; }
+.crop-shade { position: absolute; inset: 0; background: rgb(0 0 0 / 0.5); pointer-events: none; }
+.crop-rect { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4); cursor: move; touch-action: none; }
+.crop-handle { position: absolute; width: 18px; height: 18px; background: #fff; border: 2px solid var(--accent); border-radius: 4px; touch-action: none; }
+.crop-handle.h0 { left: -9px; top: -9px; cursor: nwse-resize; }
+.crop-handle.h1 { right: -9px; top: -9px; cursor: nesw-resize; }
+.crop-handle.h2 { right: -9px; bottom: -9px; cursor: nwse-resize; }
+.crop-handle.h3 { left: -9px; bottom: -9px; cursor: nesw-resize; }
+@media (pointer: coarse) { .crop-handle { width: 28px; height: 28px; } .crop-handle.h0, .crop-handle.h3 { left: -14px; } .crop-handle.h1, .crop-handle.h2 { right: -14px; } .crop-handle.h0, .crop-handle.h1 { top: -14px; } .crop-handle.h2, .crop-handle.h3 { bottom: -14px; } }
+
 /* Przeciąganie miniatur */
 .thumb.dragging { opacity: 0.4; }
 .drop-line { width: 90px; height: 3px; border-radius: 2px; background: var(--accent); flex: none; }

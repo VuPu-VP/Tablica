@@ -4,6 +4,7 @@ import { listObjects, newId, nextZ } from '../db/repo';
 import { PAGE_H, PAGE_W, type CircuitObj, type ID, type ImageObj, type Page, type PageObject, type Point, type PlotObj, type StrokeObj, type TextObj } from '../db/types';
 import { DiagramLayer, PlaceOverlay } from '../diagrams/DiagramLayer';
 import { diagramEditing } from '../diagrams/editing';
+import { imageEditing } from '../import/ImageEditor';
 import { touchState } from '../editor/gestures';
 import { PEN_COLORS, type ToolSettings } from '../editor/tools';
 import { clipboard } from '../ink/clipboard';
@@ -517,6 +518,9 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
           >
             {selected.length === 1 && (selected[0].type === 'plot' || selected[0].type === 'circuit') && (
               <button onClick={() => diagramEditing.open(selected[0] as PlotObj | CircuitObj)}><b>Edytuj</b></button>
+            )}
+            {selected.length === 1 && selected[0].type === 'image' && (
+              <button onClick={() => imageEditing.open(selected[0] as ImageObj)}><b>Edytuj</b></button>
             )}
             <button onClick={actions.copy}>Kopiuj</button>
             <button onClick={actions.cut}>Wytnij</button>

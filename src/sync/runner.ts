@@ -6,7 +6,8 @@ import { AuthError, DriveStore } from './drive';
 import { syncOnce } from './engine';
 
 // Kiedy synchronizujemy: po starcie, po powrocie internetu, po powrocie do aplikacji,
-// kilka sekund po lokalnej zmianie i co 2 minuty (żeby zobaczyć zmiany z drugiego urządzenia).
+// kilka sekund po lokalnej zmianie i co 20 s, gdy aplikacja jest na ekranie (zdjęcia z telefonu,
+// zmiany z drugiego urządzenia). Zwykle to jedno małe zapytanie o listę plików.
 
 export type SyncState = 'off' | 'login' | 'syncing' | 'ok' | 'offline' | 'error';
 export interface SyncStatus { state: SyncState; lastSync?: number; error?: string; pending: number }
@@ -54,7 +55,7 @@ export function startAutoSync() {
   addEventListener('online', () => syncNow());
   addEventListener('offline', () => set({ state: 'offline' }));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
-  setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 2 * 60_000);
+  setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 20_000);
 
   // Liczba niezsynchronizowanych zmian; po zmianie lokalnej – synchronizacja za 4 s (zbieramy kilka kresek naraz).
   let timer = 0;

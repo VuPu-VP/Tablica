@@ -4,6 +4,8 @@ import { history } from '../ink/history';
 import { CircuitEditor } from './CircuitEditor';
 import { CircuitSvg } from './CircuitSvg';
 import { diagramEditing, placeAt, type DiagramObj } from './editing';
+import { placeFromInbox } from '../import/inbox';
+import { useBlobUrl } from '../import/blobs';
 import { PlotEditor } from './PlotEditor';
 import { PlotSvg } from './PlotSvg';
 
@@ -25,6 +27,7 @@ export const DiagramLayer = memo(function DiagramLayer({ items, scale }: { items
  */
 export function PlaceOverlay({ pageId, scale }: { pageId: ID; scale: number }) {
   const placing = useSyncExternalStore(diagramEditing.subscribe, diagramEditing.getPlacing);
+  const imgUrl = useBlobUrl(placing?.type === 'image' ? placing.blobId : undefined);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
   if (!placing) return null;
@@ -35,8 +38,10 @@ export function PlaceOverlay({ pageId, scale }: { pageId: ID; scale: number }) {
   };
   const place = (e: React.PointerEvent) => {
     const { x, y } = placeAt(placing, ...toMm(e));
+    const fromInbox = diagramEditing.isFromInbox();
     diagramEditing.stopPlacing();
-    history.add([{ ...placing, pageId, x, y }]);
+    if (fromInbox && placing.type === 'image') placeFromInbox(placing, pageId, x, y).then((p) => history.added([p]));
+    else history.add([{ ...placing, pageId, x, y }]);
   };
   const ghost = { ...placing, x: 0, y: 0 };
   const style = pos && { position: 'absolute' as const, left: pos.x * scale, top: pos.y * scale, width: placing.w * scale, height: placing.h * scale };
@@ -60,7 +65,9 @@ export function PlaceOverlay({ pageId, scale }: { pageId: ID; scale: number }) {
     >
       {style && (ghost.type === 'plot'
         ? <PlotSvg p={ghost} className="place-ghost" style={style} />
-        : <CircuitSvg c={ghost} className="place-ghost" style={style} />)}
+        : ghost.type === 'circuit'
+          ? <CircuitSvg c={ghost} className="place-ghost" style={style} />
+          : imgUrl && <img src={imgUrl} alt="" className="place-ghost" style={style} draggable={false} />)}
     </div>
   );
 }

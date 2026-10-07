@@ -334,8 +334,8 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
       <DiagramEditorHost />
       {placing && (
         <div className="place-banner" role="status">
-          <span>Kliknij na kartce, gdzie wstawić {placing.type === 'plot' ? 'układ współrzędnych' : 'schemat'}</span>
-          <button className="btn ghost sm" onClick={() => diagramEditing.open(placing, true)}>Wróć do edycji</button>
+          <span>Kliknij na kartce, gdzie wstawić {placing.type === 'plot' ? 'układ współrzędnych' : placing.type === 'circuit' ? 'schemat' : 'zdjęcie'}</span>
+          {placing.type !== 'image' && <button className="btn ghost sm" onClick={() => diagramEditing.open(placing, true)}>Wróć do edycji</button>}
           <button className="btn ghost sm" onClick={() => diagramEditing.stopPlacing()}>Anuluj (Esc)</button>
         </div>
       )}
