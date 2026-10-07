@@ -1,3 +1,4 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { db } from '../db/db';
 import type { ID } from '../db/types';
@@ -25,14 +26,20 @@ export function blobUrl(id: ID): Promise<string | null> {
   return p;
 }
 
+/**
+ * Adres obrazu do <img>. Obserwuje bazę: jeśli pliku jeszcze nie ma (synchronizacja pobiera najpierw
+ * wpis o zdjęciu, a plik chwilę później), obraz pokaże się sam, gdy plik dotrze – bez odświeżania strony.
+ */
 export function useBlobUrl(id: ID | undefined): string | null {
   const [url, setUrl] = useState<string | null>(null);
+  // tylko „czy plik jest” (licznik po kluczu głównym) – bez wczytywania samego pliku przy każdej zmianie
+  const present = useLiveQuery(async () => (id ? (await db.blobs.where('id').equals(id).count()) > 0 : false), [id]);
   useEffect(() => {
     let alive = true;
-    if (!id) { setUrl(null); return; }
+    if (!id || !present) { setUrl(null); return; }
     blobUrl(id).then((u) => { if (alive) setUrl(u); });
     return () => { alive = false; };
-  }, [id]);
+  }, [id, present]);
   return url;
 }
 
