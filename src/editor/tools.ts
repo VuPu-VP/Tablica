@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type Tool = 'pen' | 'highlighter' | 'eraser' | 'lasso' | 'text';
+export type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'lasso' | 'text';
+
+/** Narzędzia, którymi się zaznacza (a nie rysuje). */
+export const SELECTING: Tool[] = ['select', 'lasso'];
 export type EraserMode = 'stroke' | 'partial';
 
 export interface ToolSettings {

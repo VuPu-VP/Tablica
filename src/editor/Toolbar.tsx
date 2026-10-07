@@ -17,6 +17,7 @@ interface Props {
 }
 
 const TOOLS: { tool: Tool; icon: IconName; label: string; key: string }[] = [
+  { tool: 'select', icon: 'pointer', label: 'Wskaźnik – zaznacz, przesuń, zmień rozmiar (nic nie rysuje)', key: 'V' },
   { tool: 'pen', icon: 'pen', label: 'Pióro', key: 'P' },
   { tool: 'highlighter', icon: 'highlighter', label: 'Zakreślacz', key: 'H' },
   { tool: 'eraser', icon: 'eraser', label: 'Gumka', key: 'E' },
@@ -92,7 +93,9 @@ export function Toolbar({ settings: s, update, onPaste, onImage, onPdf, onDiagra
         </button>
       ))}
       <div className="divider" />
-      {s.tool === 'lasso' ? (
+      {s.tool === 'select' ? (
+        <span className="hint">Stuknij obiekt, aby go zaznaczyć i przesunąć · przeciągnij po pustym miejscu, aby zaznaczyć kilka</span>
+      ) : s.tool === 'lasso' ? (
         <span className="hint">Obrysuj, aby zaznaczyć – albo stuknij zdjęcie, wykres czy tekst · boczny przycisk rysika też działa jak lasso</span>
       ) : s.tool === 'text' ? (
         <TextControls />

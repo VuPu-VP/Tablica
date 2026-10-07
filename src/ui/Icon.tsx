@@ -38,6 +38,8 @@ const P = {
   rotateCcw: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
   rotateCw: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
   crop: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
+  pointer: '<path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
   axes: '<path d="M4 2v18h18"/><path d="m2 4 2-2 2 2"/><path d="m20 18 2 2-2 2"/><path d="M7 16c2-6 4-9 6-9s3 4 6 2"/>',
   circuit: '<path d="M2 12h4"/><rect x="6" y="9" width="8" height="6" rx="0.5"/><path d="M14 12h3"/><path d="M17 7v10"/><path d="M20 7v10"/><path d="M20 12h2"/>',
   bold: '<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',

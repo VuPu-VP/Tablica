@@ -230,6 +230,8 @@ details summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 4
 .sel-menu button.danger { color: var(--danger); }
 .sel-menu .sel-swatch { width: 20px; height: 20px; padding: 0; border-radius: 50%; margin: 0 2px; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15); }
 .page[data-tool='lasso'] canvas.live { cursor: crosshair; }
+.page[data-tool='select'] canvas.live { cursor: default; }
+.sel-menu button.done { color: var(--accent); font-weight: 700; }
 
 .toolbar .hint { font-size: 12px; color: var(--text-muted); padding: 0 8px; white-space: nowrap; }
 .page canvas.live { touch-action: none; cursor: crosshair; }

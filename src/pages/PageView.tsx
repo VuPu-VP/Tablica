@@ -6,7 +6,7 @@ import { DiagramLayer, PlaceOverlay } from '../diagrams/DiagramLayer';
 import { diagramEditing } from '../diagrams/editing';
 import { imageEditing } from '../import/ImageEditor';
 import { touchState } from '../editor/gestures';
-import { PEN_COLORS, type ToolSettings } from '../editor/tools';
+import { PEN_COLORS, SELECTING, type ToolSettings } from '../editor/tools';
 import { clipboard } from '../ink/clipboard';
 import { eraseFromStroke } from '../ink/eraser';
 import { bboxOf, roundPoint, strokeHit } from '../ink/geometry';
@@ -44,7 +44,11 @@ type Gesture =
       /** id oryginalnej kreski → co z niej zostało (pusta lista = usunięta w całości) */
       work: Map<string, StrokeObj[]>;
     }
-  | { kind: 'lasso'; pointerId: number; poly: [number, number][] };
+  | { kind: 'lasso'; pointerId: number; poly: [number, number][] }
+  /** wskaźnik: przeciąganie obiektu złapanego od razu przy zaznaczeniu */
+  | { kind: 'move'; pointerId: number; sx: number; sy: number; objs: PageObject[]; dx: number; dy: number }
+  /** wskaźnik: zaznaczanie prostokątem po pustym miejscu */
+  | { kind: 'marquee'; pointerId: number; x0: number; y0: number; x1: number; y1: number };
 
 interface Props {
   page: Page;
@@ -98,7 +102,7 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
   }, [objects]);
 
   // Zaznaczenie znika, gdy zmienimy narzędzie albo zaznaczone obiekty przestaną istnieć.
-  useEffect(() => { if (settings.tool !== 'lasso') setSel(null); }, [settings.tool]);
+  useEffect(() => { if (!SELECTING.includes(settings.tool)) setSel(null); }, [settings.tool]);
   useEffect(() => {
     setSel((cur) => {
       if (!cur) return cur;
@@ -158,6 +162,15 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
       const ctx = liveCtx();
       if (g.kind === 'ink') {
         drawLiveStroke(ctx, g.stroke, g.snapped || g.ruler ? [] : predicted.current);
+      } else if (g.kind === 'marquee') {
+        ctx.setLineDash([6 / scale, 5 / scale]);
+        ctx.lineWidth = 1.5 / scale;
+        ctx.strokeStyle = '#3b5bdb';
+        ctx.fillStyle = 'rgba(59,91,219,0.06)';
+        ctx.fillRect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+        ctx.strokeRect(g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+      } else if (g.kind === 'move') {
+        // podgląd przesunięcia rysuje warstwa zapisana (override)
       } else if (g.kind === 'lasso') {
         ctx.beginPath();
         g.poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
@@ -261,7 +274,7 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
     const s = settingsRef.current;
     if (e.pointerType === 'touch' && (!s.fingerDraw || touchState.count > 1)) {
       // palec przewija (Editor), ale stuknięcie z narzędziem lasso zaznacza obiekt pod palcem
-      if (s.tool === 'lasso' && touchState.count <= 1) tap.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      if (SELECTING.includes(s.tool) && touchState.count <= 1) tap.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
       return;
     }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -278,6 +291,19 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
     e.stopPropagation();
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* wskaźnik już nieaktywny */ }
     const [x, y] = toPage(native);
+
+    if (tool === 'select') {
+      // wskaźnik: obiekt pod kursorem → zaznacz i od razu przeciągaj; puste miejsce → prostokąt zaznaczenia
+      const hit = hitAt(x, y);
+      if (hit) {
+        setSel([hit.id]);
+        gesture.current = { kind: 'move', pointerId: e.pointerId, sx: x, sy: y, objs: [hit], dx: 0, dy: 0 };
+      } else {
+        setSel(null);
+        gesture.current = { kind: 'marquee', pointerId: e.pointerId, x0: x, y0: y, x1: x, y1: y };
+      }
+      return;
+    }
     setSel(null);
 
     if (tool === 'eraser') {
@@ -346,6 +372,13 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
         const [x, y] = toPage(ev);
         return [x, y, g.real ? ev.pressure || 0.5 : 0.5] as Point;
       });
+    } else if (g.kind === 'move') {
+      const [x, y] = toPage(native);
+      g.dx = x - g.sx;
+      g.dy = y - g.sy;
+      setOverride(new Map(g.objs.map((o) => [o.id, [transformObject(o, g.dx, g.dy)]])));
+    } else if (g.kind === 'marquee') {
+      [g.x1, g.y1] = toPage(native);
     } else if (g.kind === 'lasso') {
       for (const ev of events.length ? events : [native]) {
         const p = toPage(ev);
@@ -375,6 +408,21 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
     liveCtx();
     if (g.kind === 'erase') {
       await finishErase(g);
+      return;
+    }
+    if (g.kind === 'move') {
+      if (Math.hypot(g.dx, g.dy) > 0.3) {
+        clearOverrideOnNextData.current = true;
+        await history.replace(g.objs, g.objs.map((o) => transformObject(o, g.dx, g.dy)));
+      } else setOverride(null);
+      return;
+    }
+    if (g.kind === 'marquee') {
+      const [ax, bx] = [Math.min(g.x0, g.x1), Math.max(g.x0, g.x1)];
+      const [ay, by] = [Math.min(g.y0, g.y1), Math.max(g.y0, g.y1)];
+      if (bx - ax < 2 && by - ay < 2) { setSel(null); return; } // stuknięcie w puste miejsce = zatwierdź i odznacz
+      const ids = selectInPolygon(objects, [[ax, ay], [bx, ay], [bx, by], [ax, by]], measureTextHeights());
+      setSel(ids.length ? ids : null);
       return;
     }
     if (g.kind === 'lasso') {
@@ -414,13 +462,16 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
   };
 
   /** Zaznacza najwyższy obiekt w punkcie (x, y) mm: zdjęcie, wykres, schemat, blok tekstu albo kreskę. */
-  const selectAt = (x: number, y: number) => {
+  const hitAt = (x: number, y: number): PageObject | undefined => {
     const heights = measureTextHeights();
-    const hit = [...objects].reverse().find((o) => {
+    return [...objects].reverse().find((o) => {
       if (o.type === 'stroke') return strokeHit(o, x, y, 1.5);
       if (o.type === 'text') return x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + (heights.get(o.id) ?? 5);
       return x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h;
     });
+  };
+  const selectAt = (x: number, y: number) => {
+    const hit = hitAt(x, y);
     setSel(hit ? [hit.id] : null);
   };
 
@@ -564,6 +615,7 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
               <button key={c} className="sel-swatch" style={{ background: c }} aria-label={`Zmień kolor na ${c}`} onClick={() => actions.recolor(c)} />
             ))}
             <button className="danger" onClick={actions.remove}>Usuń</button>
+            <button className="done" title="Zatwierdź i odznacz (Esc)" onClick={() => setSel(null)}>✓ Gotowe</button>
           </div>
         </>
       )}

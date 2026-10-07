@@ -14,7 +14,7 @@ import { Icon } from '../ui/Icon';
 import { toast } from '../ui/toast';
 import { touchState } from './gestures';
 import { Toolbar } from './Toolbar';
-import { isTouchPrimary, useToolSettings, type Tool } from './tools';
+import { SELECTING, isTouchPrimary, useToolSettings, type Tool } from './tools';
 
 interface Props {
   notebookId: ID;
@@ -174,7 +174,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
       const [a, b] = [...touches.current.values()];
       pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
       e.stopPropagation();
-    } else if (!settings.fingerDraw && !nativeScroll && !diagramEditing.getPlacing() && settings.tool !== 'lasso') {
+    } else if (!settings.fingerDraw && !nativeScroll && !diagramEditing.getPlacing() && !SELECTING.includes(settings.tool)) {
       // przewijanie ręczne: strona nie dostaje dotyku (stuknięcie lassem i wstawianie – tak, żeby dało się zaznaczać)
       e.stopPropagation();
     }
@@ -299,7 +299,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) history.redo(); else history.undo(); return; }
       if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); history.redo(); return; }
       if (mod || e.altKey) return;
-      const map: Record<string, Tool> = { p: 'pen', h: 'highlighter', e: 'eraser', t: 'text', l: 'lasso' };
+      const map: Record<string, Tool> = { v: 'select', p: 'pen', h: 'highlighter', e: 'eraser', t: 'text', l: 'lasso' };
       const tool = map[e.key.toLowerCase()];
       if (tool) update({ tool });
     };
