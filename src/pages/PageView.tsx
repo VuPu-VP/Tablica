@@ -34,7 +34,7 @@ function canvasDpr(cssW: number, cssH: number) {
 type LiveStroke = Pick<StrokeObj, 'tool' | 'color' | 'width' | 'pressure'> & { points: Point[] };
 
 type Gesture =
-  | { kind: 'ink'; pointerId: number; stroke: LiveStroke; ruler: boolean; snapped: boolean; /** czytamy nacisk z rysika */ real: boolean }
+  | { kind: 'ink'; pointerId: number; stroke: LiveStroke; ruler: boolean; snapped: boolean; /** czytamy nacisk z rysika */ real: boolean; t0: number }
   | {
       kind: 'erase';
       pointerId: number;
@@ -303,6 +303,7 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
         ruler: s.ruler,
         snapped: false,
         real,
+        t0: performance.now(),
         stroke: {
           tool,
           color: tool === 'pen' ? s.penColor : s.hlColor,
@@ -383,6 +384,13 @@ export const PageView = memo(function PageView({ page, scale, settings }: Props)
       const ids = selectInPolygon(objects, g.poly, measureTextHeights());
       setSel(ids.length ? ids : null);
       return;
+    }
+    // Krótkie stuknięcie piórem w zdjęcie / wykres / schemat → zaznacz je (zamiast stawiać kropkę).
+    const tb = bboxOf(g.stroke.points);
+    if (!g.snapped && performance.now() - g.t0 < 350 && Math.max(tb.maxX - tb.minX, tb.maxY - tb.minY) < 1.2) {
+      const [px, py] = g.stroke.points[0];
+      const box = [...objects].reverse().find((o) => o.type !== 'stroke' && o.type !== 'text' && px >= o.x && px <= o.x + o.w && py >= o.y && py <= o.y + o.h);
+      if (box) { setSel([box.id]); return; }
     }
     const obj: StrokeObj = {
       id: newId(),

@@ -149,6 +149,9 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
   const pinch = useRef<{ dist: number; zoom: number; mx: number; my: number } | null>(null);
   const velocity = useRef({ vx: 0, vy: 0, t: 0 });
   const inertia = useRef(0);
+  /** palce, które zaczęły na uchwycie / ramce zaznaczenia – te nie przewijają strony, tylko przesuwają i skalują */
+  const handleTouches = useRef(new Set<number>());
+  const HANDLE_SEL = '.selection, .sel-menu, .tb-grip, .tb-resize, .place-overlay';
 
   // Natywne przewijanie pozwala tylko na przesuwanie (pan-x pan-y); dwa palce = nasze szczypanie,
   // więc wtedy blokujemy przeglądarce przewijanie (inaczej przerwie gest – pointercancel).
@@ -163,6 +166,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
   const onTouchDown = (e: React.PointerEvent) => {
     if (e.pointerType !== 'touch') return;
     cancelAnimationFrame(inertia.current);
+    if ((e.target as Element).closest?.(HANDLE_SEL)) { handleTouches.current.add(e.pointerId); return; }
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     touchState.count = touches.current.size;
     if (touches.current.size >= 2) {
@@ -178,7 +182,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
   };
 
   const onTouchMove = (e: React.PointerEvent) => {
-    if (e.pointerType !== 'touch') return;
+    if (e.pointerType !== 'touch' || handleTouches.current.has(e.pointerId)) return;
     const prev = touches.current.get(e.pointerId);
     if (!prev) return;
     const el = scroller.current!;
@@ -204,6 +208,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
   };
 
   const onTouchUp = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') handleTouches.current.delete(e.pointerId);
     if (e.pointerType !== 'touch' || !touches.current.has(e.pointerId)) return;
     touches.current.delete(e.pointerId);
     touchState.count = touches.current.size;
