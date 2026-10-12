@@ -8,11 +8,23 @@ import { gateGeom, isGate } from '../diagrams/circuit';
 
 type StrokeLike = Pick<StrokeObj, 'tool' | 'width' | 'points' | 'pressure'>;
 
+/**
+ * perfect-freehand liczy w pikselach (np. dokłada punkt „o 1 dalej” i porównuje odległości z 1),
+ * a my mamy milimetry – 1 mm to dla niego ogromny skok i krótkie kreski wychodzą jak półkola.
+ * Dlatego liczymy w jednostkach 20× mniejszych (0,05 mm) i skalujemy obrys z powrotem.
+ */
+const K = 20;
+
 /** perfect-freehand zamienia listę punktów z naciskiem w obrys (wielokąt) o zmiennej grubości. */
 export function strokeOutline(s: StrokeLike, last = true): number[][] {
+  const pts = s.points.map(([x, y, p]) => [x * K, y * K, p]);
+  return outlineRaw(s, pts, last).map(([x, y]) => [x / K, y / K]);
+}
+
+function outlineRaw(s: StrokeLike, points: number[][], last: boolean): number[][] {
   if (s.tool === 'highlighter') {
-    return getStroke(s.points, {
-      size: s.width,
+    return getStroke(points, {
+      size: s.width * K,
       thinning: 0,
       smoothing: 0.6,
       streamline: 0.5,
@@ -22,8 +34,8 @@ export function strokeOutline(s: StrokeLike, last = true): number[][] {
       last,
     });
   }
-  return getStroke(s.points, {
-    size: s.width * 1.5,
+  return getStroke(points, {
+    size: s.width * 1.5 * K,
     thinning: s.pressure ? 0.6 : 0.5,
     smoothing: 0.55,
     streamline: 0.35,

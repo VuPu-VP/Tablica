@@ -14,7 +14,7 @@ import { Icon } from '../ui/Icon';
 import { toast } from '../ui/toast';
 import { touchState } from './gestures';
 import { Toolbar } from './Toolbar';
-import { SELECTING, isTouchPrimary, useToolSettings, type Tool } from './tools';
+import { SELECTING, isTouchPrimary, markPenSeen, penSeen, useToolSettings, type Tool } from './tools';
 
 interface Props {
   notebookId: ID;
@@ -144,6 +144,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
   // ---------- Dotyk ----------
   // Telefon (bez myszy/rysika): przewijanie NATYWNE przeglądarki (płynne, z rozpędem), my obsługujemy tylko szczypanie.
   // Laptop z rysikiem: przewijanie palcem robimy sami, bo przy natywnym przewijaniu rysik Windows też by przewijał stronę.
+  const [, setPenFlag] = useState(penSeen);
   const nativeScroll = !settings.fingerDraw && isTouchPrimary();
   const touches = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ dist: number; zoom: number; mx: number; my: number } | null>(null);
@@ -164,6 +165,7 @@ export function Editor({ notebookId, jump, onCurrentPage }: Props) {
   }, [nativeScroll]);
 
   const onTouchDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'pen' && !penSeen()) { markPenSeen(); setPenFlag(true); } // od teraz palec przewija ręcznie, rysik tylko pisze
     if (e.pointerType !== 'touch') return;
     cancelAnimationFrame(inertia.current);
     if ((e.target as Element).closest?.(HANDLE_SEL)) { handleTouches.current.add(e.pointerId); return; }

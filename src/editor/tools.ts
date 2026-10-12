@@ -30,9 +30,22 @@ export const ERASER_SIZES = [1.5, 3, 6];
 
 const KEY = 'tablica.tools';
 
-/** Urządzenie tylko dotykowe (telefon) – bez myszy i bez rysika. */
+const PEN_KEY = 'tablica.penSeen';
+
+/** Czy na tym urządzeniu kiedykolwiek pisano rysikiem (zapamiętane na stałe). */
+export const penSeen = () => { try { return localStorage.getItem(PEN_KEY) === '1'; } catch { return false; } };
+export const markPenSeen = () => { try { localStorage.setItem(PEN_KEY, '1'); } catch { /* tryb prywatny */ } };
+
+/**
+ * Telefon: tylko dotyk, bez myszy i bez rysika. Windows nigdy – Yoga w trybie tabletu też zgłasza
+ * „tylko dotyk”, a przy natywnym przewijaniu Chromium pozwala przewijać stronę również rysikiem.
+ */
 export const isTouchPrimary = () =>
-  typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
+  typeof matchMedia !== 'undefined' &&
+  matchMedia('(pointer: coarse)').matches &&
+  !matchMedia('(any-pointer: fine)').matches &&
+  !/Windows/i.test(navigator.userAgent) &&
+  !penSeen();
 
 const defaults = (): ToolSettings => ({
   tool: 'pen',
