@@ -23,6 +23,16 @@ export const syncStatus = {
 
 let running = false;
 let again = false;
+let lastStart = 0;
+/** Ile miejsc czeka teraz na zdjęcia z telefonu (otwarta skrzynka) – wtedy sprawdzamy Drive co 4 s zamiast co 20 s. */
+let watchers = 0;
+
+/** Otwarta skrzynka zdjęć: synchronizacja od razu i potem częściej. Zwraca funkcję „przestań”. */
+export function watchInbox(): () => void {
+  watchers++;
+  syncNow();
+  return () => { watchers--; };
+}
 
 export async function syncNow(): Promise<void> {
   if (!getClientId() || !isConnected()) return set({ state: 'off' });
@@ -30,6 +40,7 @@ export async function syncNow(): Promise<void> {
   if (!getToken()) return set({ state: 'login' });
   if (running) { again = true; return; }
   running = true;
+  lastStart = Date.now();
   set({ state: 'syncing', error: undefined });
   try {
     await syncOnce(db, new DriveStore(getToken, db));
@@ -55,7 +66,10 @@ export function startAutoSync() {
   addEventListener('online', () => syncNow());
   addEventListener('offline', () => set({ state: 'offline' }));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
-  setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 20_000);
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    if (watchers > 0 || Date.now() - lastStart >= 19_000) syncNow();
+  }, 4_000);
 
   // Liczba niezsynchronizowanych zmian; po zmianie lokalnej – synchronizacja za 4 s (zbieramy kilka kresek naraz).
   let timer = 0;

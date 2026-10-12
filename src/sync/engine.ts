@@ -5,9 +5,10 @@ import { forRemote, mergeById } from './merge';
 import type { RemoteFile, RemoteStore } from './store';
 
 // Jeden przebieg synchronizacji:
+//  0. blob-<sha256>  – najpierw wysyłamy małe podglądy zdjęć (żeby wpis o zdjęciu nigdy nie dotarł bez obrazka)
 //  1. manifest.json  – przedmioty, zeszyty, strony (lista + nagrobki)
 //  2. page-<id>.json – obiekty na stronie (kreski, tekst, obrazy)
-//  3. blob-<sha256>  – pliki zdjęć i slajdów
+//  3. blob-<sha256>  – pliki zdjęć i slajdów: najpierw podglądy, potem pełne pliki
 // Plik zdalny czytamy tylko, gdy zmienił się od ostatniej synchronizacji (inna `version`)
 // albo gdy mamy lokalne zmiany do scalenia. Dzięki temu zwykła synchronizacja to 1 zapytanie (lista plików).
 
@@ -57,6 +58,31 @@ export async function syncOnce(db: TablicaDB, store: RemoteStore): Promise<SyncR
     report.uploaded++;
   };
 
+  /** Wysyła / pobiera jeden plik. Błąd jednego pliku nie zatrzymuje pozostałych (zgłaszamy go na końcu). */
+  let blobError: unknown = null;
+  const syncBlob = async (id: ID) => {
+    const name = blobFile(id);
+    try {
+      const local = await db.blobs.where('id').equals(id).count();
+      const rf = byName.get(name);
+      if (local && !rf) {
+        await put(name, (await db.blobs.get(id))!.data);
+      } else if (!local && rf) {
+        const data = await store.readBlob(rf.id);
+        await db.blobs.put({ id, hash: id, mime: data.type, data });
+        versions[name] = rf.version;
+        report.downloaded++;
+      }
+    } catch (e) {
+      blobError ??= e;
+    }
+  };
+
+  // ---------- 0. podglądy zdjęć – zanim wyślemy wpisy, które ich używają ----------
+  for (const o of await db.objects.where('dirty').equals(1).toArray()) {
+    if (o.type === 'image' && o.thumb && !o.deleted) await syncBlob(o.thumb);
+  }
+
   // ---------- 1. manifest ----------
   const [subjects, notebooks, pages] = await Promise.all([db.subjects.toArray(), db.notebooks.toArray(), db.pages.toArray()]);
   const localDirty = [...subjects, ...notebooks, ...pages].some((e) => e.dirty);
@@ -105,29 +131,25 @@ export async function syncOnce(db: TablicaDB, store: RemoteStore): Promise<SyncR
     await markClean(db, db.objects, local);
   }
 
+  // wersje stron zapisujemy już teraz – jeśli przerwie się przesyłanie zdjęć, strony nie będą czytane od nowa
+  await db.meta.put({ key: 'sync.versions', value: versions });
+
   // ---------- 3. pliki (zdjęcia, slajdy) ----------
+  const thumbs = new Set<ID>();
   const referenced = new Set<ID>();
   (await db.pages.toArray()).forEach((p) => { if (!p.deleted && p.pdf) referenced.add(p.pdf.blobId); });
   (await db.objects.toArray()).forEach((o) => {
     if (o.deleted || o.type !== 'image') return;
+    if (o.thumb) thumbs.add(o.thumb);
     referenced.add(o.blobId);
     if (o.orig) referenced.add(o.orig); // oryginał sprzed edycji – do „Przywróć oryginał” na innym urządzeniu
   });
-  for (const id of referenced) {
-    const name = blobFile(id);
-    const local = await db.blobs.get(id);
-    const rf = byName.get(name);
-    if (local && !rf) {
-      await put(name, local.data);
-    } else if (!local && rf) {
-      const data = await store.readBlob(rf.id);
-      await db.blobs.put({ id, hash: id, mime: data.type, data });
-      versions[name] = rf.version;
-      report.downloaded++;
-    }
-  }
+  // podglądy (kilkadziesiąt KB) przed pełnymi plikami: obrazek pojawia się od razu, ostrość dochodzi później
+  for (const id of thumbs) await syncBlob(id);
+  for (const id of referenced) if (!thumbs.has(id)) await syncBlob(id);
 
   await db.meta.put({ key: 'sync.versions', value: versions });
   await db.meta.put({ key: 'sync.lastSync', value: Date.now() });
+  if (blobError) throw blobError;
   return report;
 }

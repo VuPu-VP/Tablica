@@ -76,6 +76,8 @@ export interface ImageObj extends ObjectBase {
   blobId: ID;
   /** oryginał sprzed edycji (przycinanie, filtry) – do „Przywróć oryginał” */
   orig?: ID;
+  /** mały podgląd (ok. 480 px) – dociera z telefonu w sekundę, zanim przyjdzie pełne zdjęcie */
+  thumb?: ID;
 }
 
 /**

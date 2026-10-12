@@ -1,12 +1,12 @@
 import { memo } from 'react';
 import type { ImageObj, Page } from '../db/types';
-import { useBlobUrl } from '../import/blobs';
+import { useBlobUrl, useImageUrl } from '../import/blobs';
 
 const PageImage = memo(function PageImage({ img, scale }: { img: ImageObj; scale: number }) {
-  const url = useBlobUrl(img.blobId);
+  const { url, full } = useImageUrl(img);
   const style = { left: img.x * scale, top: img.y * scale, width: img.w * scale, height: img.h * scale };
   return url ? (
-    <img className="page-image" src={url} alt="" draggable={false} style={style} />
+    <img className={`page-image ${full ? '' : 'preview'}`} src={url} alt="" draggable={false} style={style} title={full ? undefined : 'Podgląd – pełna rozdzielczość jeszcze się pobiera'} />
   ) : (
     <div className="page-image missing" style={style}>obraz czeka na synchronizację</div>
   );

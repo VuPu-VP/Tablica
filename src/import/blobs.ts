@@ -43,6 +43,17 @@ export function useBlobUrl(id: ID | undefined): string | null {
   return url;
 }
 
+/**
+ * Obraz do wyświetlenia: pełne zdjęcie, a dopóki się nie pobierze – mały podgląd.
+ * `full` mówi, czy to już pełna rozdzielczość (edycja zdjęcia potrzebuje pełnej).
+ */
+export function useImageUrl(img: { blobId: ID; thumb?: ID } | undefined, preferThumb = false): { url: string | null; full: boolean } {
+  const full = useBlobUrl(img?.blobId);
+  const thumb = useBlobUrl(img?.thumb);
+  if (preferThumb && thumb) return { url: thumb, full: !!full };
+  return { url: full ?? thumb, full: !!full };
+}
+
 /** Zmniejsza zdjęcie (dłuższy bok ≤ maxSide) i kompresuje: WebP, a gdy przeglądarka nie umie (Safari) – JPEG. */
 export async function compressImage(file: Blob, maxSide = 2000): Promise<{ blob: Blob; width: number; height: number }> {
   const bmp = await createImageBitmap(file);

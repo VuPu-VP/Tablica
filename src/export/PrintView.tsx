@@ -37,8 +37,8 @@ function PrintPage({ page, objects, urls, withBackground }: { page: Page; object
       {withBackground && !page.pdf && <div className="page-bg" style={printBackground(page.background)} />}
       {page.pdf && urls.get(page.pdf.blobId) && <img className="print-pdf" src={urls.get(page.pdf.blobId)} alt="" />}
       {objects.map((o) =>
-        o.type === 'image' && urls.get(o.blobId) ? (
-          <img key={o.id} className="page-image" src={urls.get(o.blobId)} alt="" style={{ left: `${o.x}mm`, top: `${o.y}mm`, width: `${o.w}mm`, height: `${o.h}mm` }} />
+        o.type === 'image' && (urls.get(o.blobId) ?? (o.thumb && urls.get(o.thumb))) ? (
+          <img key={o.id} className="page-image" src={urls.get(o.blobId) ?? urls.get(o.thumb!)} alt="" style={{ left: `${o.x}mm`, top: `${o.y}mm`, width: `${o.w}mm`, height: `${o.h}mm` }} />
         ) : o.type === 'plot' || o.type === 'circuit' ? (
           o.type === 'plot'
             ? <PlotSvg key={o.id} p={o} style={{ position: 'absolute', left: `${o.x}mm`, top: `${o.y}mm`, width: `${o.w}mm`, height: `${o.h}mm` }} />
@@ -76,7 +76,7 @@ export function PrintView({ job, onDone }: { job: PrintJob; onDone: () => void }
         const objs = await listObjects(p.id);
         objects.set(p.id, objs);
         if (p.pdf) blobIds.add(p.pdf.blobId);
-        objs.forEach((o) => { if (o.type === 'image') blobIds.add(o.blobId); });
+        objs.forEach((o) => { if (o.type === 'image') { blobIds.add(o.blobId); if (o.thumb) blobIds.add(o.thumb); } });
       }
       const urls = new Map<ID, string>();
       await Promise.all([...blobIds].map(async (id) => { const u = await blobUrl(id); if (u) urls.set(id, u); }));

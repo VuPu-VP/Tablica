@@ -97,4 +97,33 @@ describe('skrzynka zdjęć: telefon → laptop', () => {
     expect(inbox).toHaveLength(0);
     expect((await iphone.objects.get('placed1'))?.pageId).toBe('p1');
   });
+
+  it('podgląd leci przed wpisem, a pełne zdjęcie na końcu – przerwane wysyłanie zostawia działający podgląd', async () => {
+    await iphone.blobs.put({ id: 'full', hash: 'full', mime: 'image/jpeg', data: new Blob(['duze-zdjecie']) });
+    await iphone.blobs.put({ id: 'small', hash: 'small', mime: 'image/jpeg', data: new Blob(['podglad']) });
+    await iphone.objects.put({ ...base('inbox2'), pageId: INBOX_PAGE, type: 'image', x: 0, y: 0, w: 120, h: 90, rotation: 0, blobId: 'full', thumb: 'small', z: t } as ImageObj);
+
+    // telefon „zasypia” w trakcie wysyłania pełnego zdjęcia
+    const order: string[] = [];
+    const create = drive.create.bind(drive);
+    drive.create = async (name, data) => {
+      if (name === 'blob-full') throw new Error('aplikacja uśpiona');
+      order.push(name);
+      return create(name, data);
+    };
+    await expect(syncOnce(iphone, drive)).rejects.toThrow('uśpiona');
+    expect(order.indexOf('blob-small')).toBeLessThan(order.indexOf(`page-${INBOX_PAGE}.json`));
+
+    // laptop: zdjęcie jest w skrzynce i ma podgląd, choć pełnej wersji jeszcze nie ma
+    await syncOnce(yoga, drive);
+    expect((await yoga.objects.get('inbox2'))?.deleted).toBe(0);
+    expect(await (await yoga.blobs.get('small'))?.data.text()).toBe('podglad');
+    expect(await yoga.blobs.get('full')).toBeUndefined();
+
+    // telefon się budzi i dosyła resztę – laptop dostaje pełną rozdzielczość
+    drive.create = create;
+    await syncOnce(iphone, drive);
+    await syncOnce(yoga, drive);
+    expect(await (await yoga.blobs.get('full'))?.data.text()).toBe('duze-zdjecie');
+  });
 });

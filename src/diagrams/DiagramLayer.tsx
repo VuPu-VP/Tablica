@@ -5,7 +5,7 @@ import { CircuitEditor } from './CircuitEditor';
 import { CircuitSvg } from './CircuitSvg';
 import { diagramEditing, placeAt, type DiagramObj } from './editing';
 import { placeFromInbox } from '../import/inbox';
-import { useBlobUrl } from '../import/blobs';
+import { useImageUrl } from '../import/blobs';
 import { PlotEditor } from './PlotEditor';
 import { PlotSvg } from './PlotSvg';
 
@@ -27,7 +27,7 @@ export const DiagramLayer = memo(function DiagramLayer({ items, scale }: { items
  */
 export function PlaceOverlay({ pageId, scale }: { pageId: ID; scale: number }) {
   const placing = useSyncExternalStore(diagramEditing.subscribe, diagramEditing.getPlacing);
-  const imgUrl = useBlobUrl(placing?.type === 'image' ? placing.blobId : undefined);
+  const imgUrl = useImageUrl(placing?.type === 'image' ? placing : undefined, true).url;
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
   if (!placing) return null;

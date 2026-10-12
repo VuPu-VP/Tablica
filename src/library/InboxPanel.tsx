@@ -1,9 +1,10 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import type { ImageObj } from '../db/types';
 import { diagramEditing } from '../diagrams/editing';
-import { useBlobUrl } from '../import/blobs';
+import { useImageUrl } from '../import/blobs';
 import { imageEditing } from '../import/ImageEditor';
 import { removeFromInbox, useInbox } from '../import/inbox';
+import { watchInbox } from '../sync/runner';
 import { Icon } from '../ui/Icon';
 
 function ago(z: number): string {
@@ -15,14 +16,14 @@ function ago(z: number): string {
 }
 
 const InboxItem = memo(function InboxItem({ item, onPick }: { item: ImageObj; onPick: () => void }) {
-  const url = useBlobUrl(item.blobId);
+  const { url, full } = useImageUrl(item, true); // w skrzynce wystarczy lekki podgląd
   return (
     <div className="inbox-item">
       {url ? <img src={url} alt="" draggable={false} onClick={onPick} /> : <div className="inbox-missing">pobieranie…</div>}
       <div className="inbox-meta">
-        <span className="muted small" style={{ margin: 0 }}>{ago(item.z)}</span>
+        <span className="muted small" style={{ margin: 0 }}>{ago(item.z)}{url && !full ? ' · HD w drodze' : ''}</span>
         <span className="spacer" />
-        <button className="icon-btn sm" title="Edytuj (przytnij, obróć, filtr)" disabled={!url} onClick={() => imageEditing.open(item)}><Icon name="crop" size={16} /></button>
+        <button className="icon-btn sm" title={full ? 'Edytuj (przytnij, obróć, filtr)' : 'Edycja po pobraniu pełnej rozdzielczości'} disabled={!full} onClick={() => imageEditing.open(item)}><Icon name="crop" size={16} /></button>
         <button className="icon-btn sm" title="Usuń ze skrzynki" onClick={() => removeFromInbox(item)}><Icon name="trash" size={16} /></button>
         <button className="btn sm" disabled={!url} onClick={onPick}>Wstaw</button>
       </div>
@@ -33,6 +34,7 @@ const InboxItem = memo(function InboxItem({ item, onPick }: { item: ImageObj; on
 /** Panel skrzynki na laptopie: zdjęcia z telefonu czekające na wstawienie. */
 export function InboxPanel({ onClose }: { onClose: () => void }) {
   const items = useInbox();
+  useEffect(() => watchInbox(), []); // otwarta skrzynka = częstsze sprawdzanie Drive
   return (
     <aside className="inbox" aria-label="Skrzynka zdjęć z telefonu">
       <header>
@@ -43,7 +45,7 @@ export function InboxPanel({ onClose }: { onClose: () => void }) {
       </header>
       {items.length === 0 ? (
         <p className="muted small">
-          Pusto. Na telefonie stuknij ikonę aparatu w górnym pasku – zdjęcia pojawią się tutaj po kilkunastu sekundach
+          Pusto. Na telefonie stuknij ikonę aparatu w górnym pasku – zdjęcia pojawią się tutaj po kilku sekundach
           (wymaga włączonej synchronizacji z Google Drive na obu urządzeniach).
         </p>
       ) : (

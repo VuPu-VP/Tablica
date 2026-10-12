@@ -19,7 +19,14 @@ export function useInbox(): ImageObj[] {
   ) ?? [];
 }
 
-/** Telefon: zdjęcia z aparatu/galerii → skrzynka → od razu synchronizacja. */
+/** Rozmiar podglądu w skrzynce (dłuższy bok w px) – kilkadziesiąt KB zamiast ok. 1 MB. */
+const THUMB_SIDE = 480;
+
+/**
+ * Telefon: zdjęcia z aparatu/galerii → skrzynka → od razu synchronizacja.
+ * Każde zdjęcie ma mały podgląd, który synchronizacja wysyła PRZED wpisem do skrzynki,
+ * więc na laptopie zdjęcie pojawia się od razu, a pełna rozdzielczość dochodzi chwilę później.
+ */
 export async function addToInbox(files: File[]) {
   if (!files.length) return;
   let n = 0;
@@ -27,21 +34,20 @@ export async function addToInbox(files: File[]) {
     try {
       const { blob, width, height } = await compressImage(f);
       const blobId = await storeBlob(blob);
+      const thumb = await storeBlob((await compressImage(blob, THUMB_SIDE)).blob); // z 2000 px – szybciej niż z oryginału
       const w = 120;
       const item: ImageObj = {
         id: newId(), pageId: INBOX_PAGE, type: 'image', x: 0, y: 0, w, h: Math.round((w * height) / width * 10) / 10,
-        rotation: 0, blobId, z: nextZ(), updatedAt: 0, deleted: 0, dirty: 1,
+        rotation: 0, blobId, thumb, z: nextZ(), updatedAt: 0, deleted: 0, dirty: 1,
       };
       await putObjects([item]);
       n++;
+      syncNow(); // wysyłamy od razu każde zdjęcie, nie czekamy na resztę
     } catch (e) {
       toast('Nie udało się dodać zdjęcia: ' + (e as Error).message, 'error');
     }
   }
-  if (n) {
-    toast(n === 1 ? 'Zdjęcie w skrzynce – pojawi się na laptopie' : `${n} zdjęć w skrzynce – pojawią się na laptopie`);
-    syncNow(); // nie czekamy 4 s – wysyłamy od razu
-  }
+  if (n) toast(n === 1 ? 'Zdjęcie wysłane do skrzynki' : `${n} zdjęć wysłanych do skrzynki`);
 }
 
 /** Zdjęcie ze skrzynki na kartce: nowy obiekt na stronie, a pozycja w skrzynce znika. */

@@ -80,7 +80,7 @@ function ImageEditor({ obj, onClose }: { obj: ImageObj; onClose: () => void }) {
     try {
       const { blobId, aspect } = await saveEdit(obj.blobId, edit);
       // szerokość na kartce zostaje, wysokość wynika z nowych proporcji
-      const after: ImageObj = { ...obj, blobId, orig: obj.orig ?? obj.blobId, h: Math.round(obj.w * aspect * 10) / 10 };
+      const after: ImageObj = { ...obj, blobId, thumb: undefined, orig: obj.orig ?? obj.blobId, h: Math.round(obj.w * aspect * 10) / 10 };
       await history.replace([obj], [after]);
       onClose();
     } catch (e) {
