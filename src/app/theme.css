@@ -384,6 +384,10 @@ details summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 4
 .inbox-item img { width: 100%; max-height: 220px; object-fit: contain; background: #fff; border-radius: 8px; cursor: copy; }
 .inbox-missing { height: 120px; display: grid; place-items: center; color: var(--text-muted); font-size: 12px; background: var(--surface); border-radius: 8px; }
 .inbox-meta { display: flex; align-items: center; gap: 4px; }
+/* wąski ekran (np. Yoga obrócona pionowo): skrzynka jako wysuwana szuflada nad kartką */
+@media (max-width: 767px) {
+  .inbox { position: fixed; top: 56px; right: 0; bottom: 0; width: min(320px, 88vw); z-index: 40; box-shadow: -8px 0 24px rgb(0 0 0 / 0.25); }
+}
 
 /* ---------- Edycja zdjęcia ---------- */
 .dialog:has(.image-editor) { width: min(1000px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); }

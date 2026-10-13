@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { db } from '../db/db';
 import type { ID, Page } from '../db/types';
 import { Editor } from '../editor/Editor';
+import { isTouchPrimary } from '../editor/tools';
 import { copyPageAsImage, copyPageMarkdown, copyText, notebookMarkdown } from '../export/share';
 import { SearchDialog } from '../library/SearchDialog';
 import { ExportDialog } from '../export/ExportDialog';
@@ -40,6 +41,9 @@ export function App() {
   const [jump, setJump] = useState<{ pageId: ID; nonce: number } | null>(null);
   const [theme, cycleTheme] = useTheme();
   const mobile = useIsMobile();
+  // telefon wysyła zdjęcia, każde inne urządzenie je odbiera – niezależnie od szerokości okna
+  // (Yoga obrócona pionowo ma wąski ekran jak telefon, ale skrzynka ma tam zostać)
+  const phone = isTouchPrimary();
   const [searchOpen, setSearchOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -124,13 +128,16 @@ export function App() {
         {showEditor && (
           <button className="icon-btn" title="Eksport do PDF / drukuj" onClick={() => setExportOpen(true)}><Icon name="export" /></button>
         )}
-        <button className="icon-btn only-mobile" title="Zdjęcie do skrzynki – pojawi się na laptopie" onClick={async () => addToInbox(await pickFiles('image/*', { multiple: true }))}>
-          <Icon name="camera" />
-        </button>
-        <button className={`icon-btn hide-mobile badge-host ${inboxOpen ? 'active' : ''}`} title="Skrzynka zdjęć z telefonu" onClick={() => setInboxOpen((v) => !v)}>
-          <Icon name="inbox" />
-          {inbox.length > 0 && <span className="badge">{inbox.length}</span>}
-        </button>
+        {phone ? (
+          <button className="icon-btn" title="Zdjęcie do skrzynki – pojawi się na laptopie" onClick={async () => addToInbox(await pickFiles('image/*', { multiple: true }))}>
+            <Icon name="camera" />
+          </button>
+        ) : (
+          <button className={`icon-btn badge-host ${inboxOpen ? 'active' : ''}`} title="Skrzynka zdjęć z telefonu" onClick={() => setInboxOpen((v) => !v)}>
+            <Icon name="inbox" />
+            {inbox.length > 0 && <span className="badge">{inbox.length}</span>}
+          </button>
+        )}
         <SyncPill onOpenSettings={() => setSettingsOpen(true)} />
       </header>
       <div className="body">
@@ -141,7 +148,7 @@ export function App() {
             <Editor key={validNotebook.id} notebookId={validNotebook.id} jump={jump} onCurrentPage={onCurrentPage} />
           </>
         )}
-        {inboxOpen && !mobile && <InboxPanel onClose={() => setInboxOpen(false)} />}
+        {inboxOpen && !phone && <InboxPanel narrow={mobile} onClose={() => setInboxOpen(false)} />}
         {!validNotebook && !mobile && (
           <div className="empty">
             <div>

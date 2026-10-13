@@ -32,7 +32,7 @@ const InboxItem = memo(function InboxItem({ item, onPick }: { item: ImageObj; on
 });
 
 /** Panel skrzynki na laptopie: zdjęcia z telefonu czekające na wstawienie. */
-export function InboxPanel({ onClose }: { onClose: () => void }) {
+export function InboxPanel({ onClose, narrow }: { onClose: () => void; narrow: boolean }) {
   const items = useInbox();
   useEffect(() => watchInbox(), []); // otwarta skrzynka = częstsze sprawdzanie Drive
   return (
@@ -51,7 +51,10 @@ export function InboxPanel({ onClose }: { onClose: () => void }) {
       ) : (
         <div className="inbox-list">
           {items.map((it) => (
-            <InboxItem key={it.id} item={it} onPick={() => diagramEditing.startPlacing(it, true)} />
+            <InboxItem key={it.id} item={it} onPick={() => {
+              diagramEditing.startPlacing(it, true);
+              if (narrow) onClose(); // wąski ekran: szuflada zasłania kartkę – chowamy ją na czas wstawiania
+            }} />
           ))}
         </div>
       )}
